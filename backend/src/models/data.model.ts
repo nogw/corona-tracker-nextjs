@@ -6,6 +6,10 @@ const dataSchema = new Schema({
     type: String,
   },
 
+  active: {
+    type: String,
+  },
+
   deaths: {
     type: String,
   },
