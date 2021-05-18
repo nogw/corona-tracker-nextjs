@@ -14,23 +14,22 @@ function Graphic({ info, color, data }: IPropsGraphic) {
   ])
 
   useEffect(() => {
-
-    for ( var item in data ) {
-      console.log(data[item][info])
-      setDataState([...dataState, { x: parseInt(item) + 1, y: parseInt(data[item][info]) }])
+    let dataStateProv = []
+    for ( var item = 0; item < data.length; item++ ) {
+      dataStateProv.push({ x: item, y: parseInt(data[item][info]) })
+      setDataState(dataStateProv) 
     }
   }, [])
 
   return (
     <Container>
       <h1>{info}</h1>
+      <h2 style={{ color: color, fontSize: 14 }}>{data[data.length - 1][info]}</h2>
       
         <VictoryLine
-          interpolation="natural"
-          domainPadding={5}
-
-          padding={0}
-
+          domainPadding={0}
+          padding={10}
+          scale={{x: "linear", y: "log"}}
           style={{
             data: { 
               stroke: `${color}`, 

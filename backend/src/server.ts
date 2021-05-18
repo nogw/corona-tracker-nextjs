@@ -1,9 +1,11 @@
 require("dotenv").config()
+
 import express, { Request, Response } from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
 import mongoose from 'mongoose'
 import axios from 'axios'
+import cron from 'node-cron'
 import Data from './models/data.model'
 
 const app = express()
@@ -30,89 +32,67 @@ db.once("open", () => {
   console.log("database connect")
 })
 
-// TODO: create method to auto-execute function to get infos of corona virus
-
-app.get("/", async ( req: Request, res: Response ) => {
-  let dataDb: any = await Data.find({}).sort({ createdAt: 'desc'}).exec()
-  
+var task = cron.schedule('0-59/25 * * * * *', async () =>  {
+  console.log("again...")
+  const databaseCollections = await Data.find({}).sort({ createdAt: 'desc'}).exec()
   const response = await axios.get("https://disease.sh/v3/covid-19/countries/brazil?strict=true")
   const data = response.data
 
-  if (dataDb.length < 1) {
-    let dataDbAdd = new Data({
+  if (databaseCollections.length < 1) {
+    let document = new Data({
       updated: data.updated,
       deaths: data.deaths,
       recovered: data.recovered,
       cases: data.cases,
       active: data.active
     })
-
-    dataDbAdd.save()
-    .then( async (dataRes: any) => {
-      let database_data: any = await Data.find({}).sort({ createdAt: 'desc'}).exec()
-      
-      return res.status(200).json({
-        message: database_data
-      })
-    })
-    .catch((error: any) => {
-      return res.status(400).json({
-        error: error 
-      })
-    })
+    
+    await document.save()
   } else {
-    if (dataDb[0].cases !== data.cases.toString()) {
-      if ( dataDb.length > 9 ) {
-        await Data.deleteOne({ _id: dataDb[dataDb.length - 1]._id }).exec()
-
-        let dataDbAdd = new Data({
+    if (databaseCollections[0].cases !== data.cases.toString()) {
+      if (databaseCollections.length > 9) {
+        await Data.deleteOne({ _id: databaseCollections[databaseCollections.length - 1]._id }).exec()
+        
+        let document = new Data({
           updated: data.updated,
           deaths: data.deaths,
           recovered: data.recovered,
           cases: data.cases,
           active: data.active
         })
-
-        dataDbAdd.save()
-        .then( async (dataRes: any) => {
-          let database_data: any = await Data.find({}).sort({ createdAt: 'desc'}).exec()
-
-          return res.status(200).json({
-            message: database_data
-          })
-        })
-        .catch((error: any) => {
-          return res.status(400).json({
-            error: error 
-          })
-        })
+        
+        await document.save()
       } else {
-        let dataDbAdd = new Data({
+        let document = new Data({
           updated: data.updated,
           deaths: data.deaths,
           recovered: data.recovered,
           cases: data.cases,
           active: data.active
         })
+        
+        await document.save()
+      }
+    }
+  }
+}, {
+  scheduled: false
+});
 
-        dataDbAdd.save()
-        .then((dataRes: any) => {
-          return res.status(200).json({
-            message: Data.find({}).sort({ createdAt: 'desc'})
-          })
-        })
-        .catch((error: any) => {
-          return res.status(400).json({
-            error: error 
-          })
-        })
-          }
-        } else {
-          return res.status(200).json({
-            size: dataDb.length,
-            message: dataDb
-          })
-        }
+task.start();
+
+app.get("/", async ( req: Request, res: Response ) => {
+  const collectionsToReturn = await Data.find({}).sort({ createdAt: 'desc'}).exec()
+  
+  if (!collectionsToReturn) {
+    return res.status(400).json({
+      error: "information not found"
+    })
+  }
+  else {
+    return res.status(200).json({
+      message: collectionsToReturn
+    })
   }
 })
 
